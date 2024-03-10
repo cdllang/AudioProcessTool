@@ -8,11 +8,9 @@ AudioSegment.converter = "ffmpeg.exe"
 def export_audio(sound, output_path):
     """将有声音频导出为一个文件"""
     output_path = output_path + "修改.wav"
-    print(output_path)
     sound.export(output_path, format="wav")
 def analyze_audio(audio_path, threshold=-40, min_silence_len=500):
     """分析音频，返回去除低于阈值音量的声音后的有声时长（单位：毫秒）"""
-    print(threshold)
     sound = AudioSegment.from_file(audio_path)
     nonsilent_chunks = detect_nonsilent(sound, min_silence_len=min_silence_len, silence_thresh=threshold)
     total_duration = sum((end - start for start, end in nonsilent_chunks))
