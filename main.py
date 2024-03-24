@@ -14,36 +14,41 @@ def export_audio(sound, output_path):
     """将有声音频导出为一个文件"""
     detail = ""
     if FuncMode.get() == "analysis":
-        detail = " 干音分析"
+        detail = "_干音分析"
         print(detail)
     else:
-        detail = " 音频处理"
+        detail = "_音频处理"
         if AudioType.get() == "auto":
-            detail += " 自动检测"
+            detail += "_"+AutoDetect.get()
         else:
             if AudioType.get() == "mono":
-                detail += " 单声道"
+                detail += "_mono"
             else:
-                detail += " 双声道"
+                detail += "_stereo"
         if SampleRate.get() == 48000:
-            detail += " 48000hz"
+            detail += "_48000hz"
         else:
-            detail += " 44100hz"
+            detail += "_44100hz"
         if Normalize.get():
-            detail += " 标准化"
+            detail += "_normalized"
         print(detail)
     #获取文件名
+    output_path = output_path.replace("\\","/")
     filename = output_path.split("/")[-1]
     #获取文件地址并去除文件名
-    output_path = output_path.replace("\\","/")
     output_path = output_path.split("/")
     output_path = "/".join(output_path[:-1])
     print(output_path)
     #判断原文件地址是否有output文件夹，没有则创建
     if not os.path.exists(output_path+"/output/"):
         os.makedirs(output_path+"/output/")
-    print(filename.split("."))
-    output_path = output_path+"/output/" + filename.split(".")[0] + detail +"." + OutputFormat.get()
+    #去除文件名后缀文件可能存在多个.所以只删除最后一个元素
+    filename = filename.split(".")
+    filename = ".".join(filename[:-1])
+    print(filename)
+
+    #文件名为按.分离的倒数第二个元素
+    output_path = output_path+"/output/" + filename+ detail +"." + OutputFormat.get()
     #如果为MP3
     if OutputFormat.get() == "mp3":
         sound.export(output_path, format="mp3", bitrate="320k")
@@ -103,14 +108,20 @@ def process_files(audio_paths):
         if AudioType.get() == "auto":
             if sound.channels == 1:
                 sound = sound.set_channels(1)
+                AutoDetect.set("mono")
             else:
                 #如果双声道的音频相同，则转为单声道
                 if sound.split_to_mono()[0] == sound.split_to_mono()[1]:
                     sound = sound.set_channels(1)
+                    AutoDetect.set("mono")
                 else:
                     #如果双声道的其中一轨没有声音，则转为单声道
                     if sound.split_to_mono()[0].max_dBFS == -96 or sound.split_to_mono()[1].max_dBFS == -96:
                         sound = sound.set_channels(1)
+                        AutoDetect.set("mono")
+                    else:
+                        sound = sound.set_channels(2)
+                        AutoDetect.set("stereo")
         if AudioType.get() == "mono":
             sound = sound.set_channels(1)
         if AudioType.get() == "stereo":
@@ -192,19 +203,23 @@ def on_checkStereo():
         AudioType.set("stereo")
         print(AudioType.get())
         MValue.set(0)
+        ATValue.set(0)
     else:
         AudioType.set("mono")
         print(AudioType.get())
         MValue.set(1)
+        ATValue.set(0)
 def on_checkMono():
     if MValue.get() == 1:
         AudioType.set("mono")
         print(AudioType.get())
         SValue.set(0)
+        ATValue.set(0)
     else:
         AudioType.set("stereo")
         print(AudioType.get())
         SValue.set(1)
+        ATValue.set(0)
 def on_checkAuto():
     if ATValue.get() == 1:
         AudioType.set("auto")
@@ -268,13 +283,14 @@ C41Value = tk.IntVar(value=0)
 #默认为自动检测
 SValue = tk.IntVar(value=0)
 MValue = tk.IntVar(value=0)
-ATValue = tk.StringVar(value=1)
+ATValue = tk.IntVar(value=1)
 #默认为不标准化
 NValue = tk.IntVar(value=0)
 FuncMode = tk.StringVar(value="analysis")
 SampleRate = tk.IntVar(value=48000)
 AudioType = tk.StringVar(value="auto")
 Normalize = tk.BooleanVar(value=False)
+AutoDetect = tk.StringVar(value="None")
 #导出格式
 OutputFormat = tk.StringVar(value="wav")
 #默认为干音分析
