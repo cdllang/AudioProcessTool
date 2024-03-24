@@ -15,18 +15,23 @@ def export_audio(sound, output_path):
     detail = ""
     if FuncMode.get() == "analysis":
         detail = " 干音分析"
+        print(detail)
     else:
         detail = " 音频处理"
-        if AudioType.get() == "mono":
-            detail += " 单声道"
+        if AudioType.get() == "auto":
+            detail += " 自动检测"
         else:
-            detail += " 双声道"
+            if AudioType.get() == "mono":
+                detail += " 单声道"
+            else:
+                detail += " 双声道"
         if SampleRate.get() == 48000:
             detail += " 48000hz"
         else:
             detail += " 44100hz"
         if Normalize.get():
             detail += " 标准化"
+        print(detail)
     #获取文件名
     filename = output_path.split("/")[-1]
     #获取文件地址并去除文件名
@@ -38,8 +43,12 @@ def export_audio(sound, output_path):
     if not os.path.exists(output_path+"/output/"):
         os.makedirs(output_path+"/output/")
     print(filename.split("."))
-    output_path = output_path+"/output/" + filename.split(".")[0] + detail +"." + filename.split(".")[1]
-    sound.export(output_path, format="wav")
+    output_path = output_path+"/output/" + filename.split(".")[0] + detail +"." + OutputFormat.get()
+    #如果为MP3
+    if OutputFormat.get() == "mp3":
+        sound.export(output_path, format="mp3", bitrate="320k")
+    else:
+        sound.export(output_path, format="wav")
 def analyze_audio(audio_path, threshold=-40, min_silence_len=500):
     """分析音频，返回去除低于阈值音量的声音后的有声时长（单位：毫秒）"""
     sound = AudioSegment.from_file(audio_path)
@@ -91,9 +100,20 @@ def process_files(audio_paths):
 
         sound = AudioSegment.from_file(audio_path)
         sound = sound.set_frame_rate(SampleRate.get())
+        if AudioType.get() == "auto":
+            if sound.channels == 1:
+                sound = sound.set_channels(1)
+            else:
+                #如果双声道的音频相同，则转为单声道
+                if sound.split_to_mono()[0] == sound.split_to_mono()[1]:
+                    sound = sound.set_channels(1)
+                else:
+                    #如果双声道的其中一轨没有声音，则转为单声道
+                    if sound.split_to_mono()[0].max_dBFS == -96 or sound.split_to_mono()[1].max_dBFS == -96:
+                        sound = sound.set_channels(1)
         if AudioType.get() == "mono":
             sound = sound.set_channels(1)
-        else:
+        if AudioType.get() == "stereo":
             sound = sound.set_channels(2)
         if Normalize.get():
             sound = sound.apply_gain(-sound.max_dBFS)
@@ -104,7 +124,7 @@ def on_checkA():
 
     if AValue.get() == 1:
         FuncMode.set("analysis")
-        print(FuncMode)
+        print(FuncMode.get())
         #显示阈值输入框
         threshold_entry.pack()
         threshold_label.pack()
@@ -114,28 +134,31 @@ def on_checkA():
         #隐藏单声道、双声道、48000hz、44100hz等checkbox
         chkStereo.pack_forget()
         chkMono.pack_forget()
+        chkAuto.pack_forget()
         chk48000.pack_forget()
         chk44100.pack_forget()
         chkNmlz.pack_forget()
-
+        chkOutputFormat.pack_forget()
     else:
         #隐藏阈值输入框
         FuncMode.set("process")
-        print(FuncMode)
+        print(FuncMode.get())
         threshold_entry.pack_forget()
         threshold_label.pack_forget()
         PValue.set(1)
         #显示单声道、双声道、48000hz、44100hz等checkbox
         chkStereo.pack()
         chkMono.pack()
+        chkAuto.pack()
         chk48000.pack()
         chk44100.pack()
         chkNmlz.pack()
+        chkOutputFormat.pack()
 
 def on_checkP():
     if PValue.get() == 1:
         FuncMode.set("process")
-        print(FuncMode)
+        print(FuncMode.get())
         #隐藏阈值输入框
         threshold_entry.pack_forget()
         threshold_label.pack_forget()
@@ -144,11 +167,14 @@ def on_checkP():
         #显示单声道、双声道、48000hz、44100hz等checkbox
         chkStereo.pack()
         chkMono.pack()
+        chkAuto.pack()
         chk48000.pack()
         chk44100.pack()
         chkNmlz.pack()
+        chkOutputFormat.pack()
     else:
         FuncMode.set("analysis")
+        print(FuncMode.get())
         AValue.set(1)
         #隐藏阈值输入框
         threshold_entry.pack()
@@ -156,41 +182,61 @@ def on_checkP():
         #隐藏单声道、双声道、48000hz、44100hz等checkbox
         chkStereo.pack_forget()
         chkMono.pack_forget()
+        chkAuto.pack_forget()
         chk48000.pack_forget()
         chk44100.pack_forget()
         chkNmlz.pack_forget()
+        chkAuto.pack_forget()
 def on_checkStereo():
     if SValue.get() == 1:
         AudioType.set("stereo")
+        print(AudioType.get())
         MValue.set(0)
     else:
         AudioType.set("mono")
+        print(AudioType.get())
         MValue.set(1)
 def on_checkMono():
     if MValue.get() == 1:
         AudioType.set("mono")
+        print(AudioType.get())
         SValue.set(0)
     else:
         AudioType.set("stereo")
+        print(AudioType.get())
         SValue.set(1)
+def on_checkAuto():
+    if ATValue.get() == 1:
+        AudioType.set("auto")
+        print(AudioType.get())
+        MValue.set(0)
+        SValue.set(0)
+    else:
+        AudioType.set("stereo")
+        print(AudioType.get())
+        SValue.set(1)
+        MValue.set(0)
 def on_check48000():
     if C48Value.get() == 1:
         SampleRate.set(48000)
+        print(SampleRate.get())
         C41Value.set(0)
     else:
         SampleRate.set(44100)
+        print(SampleRate.get())
         C41Value.set(1)
 def on_check44100():
     if C41Value.get() == 1:
         SampleRate.set(44100)
+        print(SampleRate.get())
         C48Value.set(0)
     else:
         SampleRate.set(48000)
+        print(SampleRate.get())
         C48Value.set(1)
 def on_drop(event):
     global current_file_index
     audio_paths = app.tk.splitlist(event.data)
-    print(FuncMode)
     if FuncMode.get() == "analysis":
         threading.Thread(target=analysis_files, args=(audio_paths,)).start()
     else:
@@ -198,26 +244,39 @@ def on_drop(event):
 def on_checkNmlz():
     if NValue.get() == 1:
         Normalize.set(True)
+        print("Normalized")
     else:
         Normalize.set(False)
-
-
-
+        print("Not Normalized")
+def on_checkOutputFormat():
+    if OutputFormat.get() == "wav":
+        OutputFormat.set("wav")
+        print("wav")
+    else:
+        OutputFormat.set("mp3")
+        print("mp3")
 
 app = TkinterDnD.Tk()
 app.title('DryVocalTimeAnalyser')
 app.iconbitmap('icon.ico')
+#默认为干音分析
 AValue = tk.IntVar(value=1)
 PValue = tk.IntVar(value=0)
+#默认为48000hz
 C48Value = tk.IntVar(value=1)
 C41Value = tk.IntVar(value=0)
-SValue = tk.IntVar(value=1)
+#默认为自动检测
+SValue = tk.IntVar(value=0)
 MValue = tk.IntVar(value=0)
+ATValue = tk.StringVar(value=1)
+#默认为不标准化
 NValue = tk.IntVar(value=0)
 FuncMode = tk.StringVar(value="analysis")
 SampleRate = tk.IntVar(value=48000)
-AudioType = tk.StringVar(value="stereo")
+AudioType = tk.StringVar(value="auto")
 Normalize = tk.BooleanVar(value=False)
+#导出格式
+OutputFormat = tk.StringVar(value="wav")
 #默认为干音分析
 chkA = ttk.Checkbutton(app, text='干音分析', variable=AValue,onvalue=1,offvalue=0,command=on_checkA)
 chkA.pack()
@@ -225,9 +284,11 @@ chkP = ttk.Checkbutton(app, text='素材处理', variable=PValue,onvalue=1,offva
 chkP.pack()
 chkStereo = ttk.Checkbutton(app, text='双声道', variable=SValue,onvalue=1,offvalue=0,command=on_checkStereo)
 chkMono = ttk.Checkbutton(app, text='单声道', variable=MValue,onvalue=1,offvalue=0,command=on_checkMono)
+chkAuto = ttk.Checkbutton(app, text='自动检测', variable=ATValue,onvalue=1,offvalue=0,command=on_checkAuto)
 chk48000 = ttk.Checkbutton(app, text='48000hz', variable=C48Value,onvalue=1,offvalue=0,command=on_check48000)
 chk44100 = ttk.Checkbutton(app, text='44100hz', variable=C41Value,onvalue=1,offvalue=0,command=on_check44100)
 chkNmlz = ttk.Checkbutton(app, text='标准化', variable=NValue,onvalue=1,offvalue=0,command=on_checkNmlz)
+chkOutputFormat = ttk.Checkbutton(app, text='导出为mp3(默认wav)', variable=OutputFormat,onvalue="mp3",offvalue="wav",command=on_checkOutputFormat)
 result_var = tk.StringVar()
 result_label = tk.Label(app, textvariable=result_var)
 result_label.pack(pady=10)
