@@ -1,0 +1,1 @@
+pyinstaller --noconfirm -F --add-data "venv/Lib/site-packages/tkinterdnd2;tkinterdnd2/" -i icon.ico  main.py
