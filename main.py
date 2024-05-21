@@ -5,11 +5,18 @@ import threading
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
+from pydub.playback import play
 from tkinter import messagebox
 import json
-AudioSegment.converter = "ffmpeg.exe"
-from playsound import playsound
+import simpleaudio as sa
 
+def play_audio(file_path):
+    """播放音频"""
+    wave_obj = sa.WaveObject.from_wave_file(file_path)
+    play_obj = wave_obj.play()
+    play_obj.wait_done()
+
+AudioSegment.converter = "ffmpeg.exe"
 
 def export_audio(sound, output_path):
     """将有声音频导出为一个文件"""
@@ -94,7 +101,7 @@ def analysis_files(audio_paths):
         app.update_idletasks()
         total_duration += analyze_audio(audio_path,threshold)
     result_var.set(f"有声音的总长度（去除静音部分）：{total_duration / 1000}秒")
-    playsound('sound.wav')
+    play_audio('sound.wav')
     progress_bar.destroy()
 def process_files(audio_paths):
     #将音频转换为AudioType和SampleRate对应格式
@@ -140,7 +147,7 @@ def process_files(audio_paths):
         export_audio(sound, audio_path)
     progress_bar.destroy()
     result_var.set(f"处理完成")
-    playsound('sound.wav')
+    play_audio('sound.wav')
 def on_checkA():
 
     if AValue.get() == 1:
@@ -280,6 +287,14 @@ def read_json_file():
     else:
         return "lightblue", "lightgreen"
 
+def center_window(window, width = 600, height = 450):
+    """将窗口居中"""
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    window.geometry(f"{width}x{height}+{x}+{y}")
+
 # 创建主窗口
 app = TkinterDnD.Tk()
 app.title('DryVocalTimeAnalyser')
@@ -383,5 +398,5 @@ split_label2 = tk.Label(middle_frame, text="-------------处理进度与结果--
 split_label2.grid(row=14, column=0, pady=5, sticky='n')
 #app.drop_target_register(DND_FILES)
 #app.dnd_bind('<<Drop>>', on_drop)
-
+center_window(app)
 app.mainloop()
